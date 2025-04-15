@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flash Card Study</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #3498db;
+            --secondary-color: #2980b9;
+            --background-color: #f9f9f9;
+            --card-color: #ffffff;
+            --text-color: #333333;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--background-color);
+            color: var(--text-color);
+            padding: 1rem;
+            max-width: 100%;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .selection-section {
+            background-color: var(--card-color);
+            border-radius: 8px;
+            padding: 1rem;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .collection-selection {
+            margin-bottom: 1rem;
+        }
+
+        .collection-dropdown {
+            width: 100%;
+            padding: 0.7rem;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            margin-top: 0.5rem;
+            margin-bottom: 1rem;
+            font-size: 1rem;
+        }
+
+        .tag-selection {
+            display: none;
+            padding-top: 1rem;
+            border-top: 1px solid #eee;
+        }
+
+        .tag-selection h2 {
+            font-size: 1.2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .tag-checkboxes {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin: 0.5rem 0 1rem;
+        }
+
+        .tag-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .study-section {
+            display: none;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .flash-card {
+            background-color: var(--card-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+            min-height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            font-size: 1.2rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            position: relative;
+            overflow: hidden;
+            word-wrap: break-word;
+            transition: transform 0.15s;
+        }
+
+        .flash-card-content {
+            max-width: 100%;
+            padding: 1rem;
+        }
+
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            justify-content: center;
+        }
+
+        button {
+            padding: 0.7rem 1rem;
+            border: none;
+            background-color: var(--primary-color);
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            flex-grow: 1;
+            max-width: 45%;
+            transition: background-color 0.2s;
+            touch-action: manipulation;
+        }
+
+        button:hover, button:active {
+            background-color: var(--secondary-color);
+        }
+
+        .card-counter {
+            text-align: center;
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+        }
+
+        .keyboard-shortcuts {
+            text-align: center;
+            font-size: 0.8rem;
+            margin-top: 1rem;
+            color: #666;
+        }
+
+        .instructions {
+            background-color: var(--card-color);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .instructions h2 {
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .instructions ol {
+            padding-left: 1.5rem;
+        }
+
+        .instructions li {
+            margin-bottom: 0.3rem;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 1rem;
+            font-style: italic;
+            color: #666;
+        }
+
+        @media (min-width: 768px) {
+            body {
+                padding: 2rem;
+                max-width: 600px;
+            }
+
+            h1 {
+                font-size: 2rem;
+            }
+
+            .flash-card {
+                min-height: 250px;
+                font-size: 1.5rem;
+            }
+
+            button {
+                font-size: 1rem;
+                max-width: 150px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Flash Card Study</h1>
+    </header>
+
+    <div class="container">
+        <div class="instructions">
+            <h2>How to Use:</h2>
+            <ol>
+                <li>Select a flash card collection from the dropdown</li>
+                <li>Choose which tags to study (or study all cards)</li>
+                <li>Use the controls to flip, navigate, and shuffle cards</li>
+            </ol>
+        </div>
+
+        <div class="selection-section">
+            <div class="collection-selection">
+                <h2>Select Collection</h2>
+                <select id="collection-dropdown" class="collection-dropdown">
+                    <option value="">Loading collections...</option>
+                </select>
+                <div id="collection-info"></div>
+            </div>
+
+            <div class="tag-selection" id="tag-selection">
+                <h2>Select Tags to Study</h2>
+                <div class="tag-checkbox">
+                    <input type="checkbox" id="select-all" />
+                    <label for="select-all">Select All Cards (Ignore Tags)</label>
+                </div>
+                <div class="tag-checkboxes" id="tag-checkboxes"></div>
+                <button id="start-studying">Start Studying</button>
+            </div>
+        </div>
+
+        <div class="study-section" id="study-section">
+            <div class="flash-card" id="flash-card">
+                <div class="flash-card-content" id="card-content">
+                    Select a collection and tags to start studying
+                </div>
+            </div>
+            <div class="card-counter" id="card-counter"></div>
+            <div class="controls">
+                <button id="prev-btn">Previous</button>
+                <button id="flip-btn">Flip Card</button>
+                <button id="next-btn">Next</button>
+                <button id="shuffle-btn">Shuffle</button>
+            </div>
+            <button id="back-btn">Back to Selection</button>
+            <div class="keyboard-shortcuts">
+                Swipe left/right for previous/next card, tap to flip
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration - Update this section with your GitHub repository information
+        const CONFIG = {
+            // Path to your collections folder relative to the HTML file
+            // If you have a folder structure like:
+            // - index.html
+            // - collections/
+            //   - math.xlsx
+            //   - history.xlsx
+            collectionsPath: 'collections/', // Update this if your path is different
+        };
+
+        // DOM Elements
+        const collectionDropdown = document.getElementById('collection-dropdown');
+        const collectionInfo = document.getElementById('collection-info');
+        const tagSelection = document.getElementById('tag-selection');
+        const tagCheckboxes = document.getElementById('tag-checkboxes');
+        const selectAll = document.getElementById('select-all');
+        const startStudyingBtn = document.getElementById('start-studying');
+        const studySection = document.getElementById('study-section');
+        const cardContent = document.getElementById('card-content');
+        const cardCounter = document.getElementById('card-counter');
+        const flashCard = document.getElementById('flash-card');
+        const flipBtn = document.getElementById('flip-btn');
+        const nextBtn = document.getElementById('next-btn');
+        const prevBtn = document.getElementById('prev-btn');
+        const shuffleBtn = document.getElementById('shuffle-btn');
+        const backBtn = document.getElementById('back-btn');
+
+        // App State
+        let collections = [];
+        let flashcardData = null;
+        let tags = [];
+        let currentStudyCards = [];
+        let currentCardIndex = 0;
+        let cardSide = 'front';
+
+        // Load collections on page load
+        window.addEventListener('DOMContentLoaded', loadCollectionList);
+
+        // Event Listeners
+        collectionDropdown.addEventListener('change', loadSelectedCollection);
+        selectAll.addEventListener('change', toggleSelectAll);
+        startStudyingBtn.addEventListener('click', startStudying);
+        flipBtn.addEventListener('click', flipCard);
+        nextBtn.addEventListener('click', nextCard);
+        prevBtn.addEventListener('click', prevCard);
+        shuffleBtn.addEventListener('click', shuffleCards);
+        backBtn.addEventListener('click', backToSelection);
+
+        // Touch events for swiping
+        let touchStartX = 0;
+        let touchEndX = 0;
+        
+        flashCard.addEventListener('touchstart', e => {
+            touchStartX = e.changedTouches[0].screenX;
+        });
+        
+        flashCard.addEventListener('touchend', e => {
+            touchEndX = e.changedTouches[0].screenX;
+            handleSwipe();
+        });
+
+        flashCard.addEventListener('click', flipCard);
+
+        function handleSwipe() {
+            const SWIPE_THRESHOLD = 50;
+            if (touchStartX - touchEndX > SWIPE_THRESHOLD) {
+                // Swipe left
+                nextCard();
+            } else if (touchEndX - touchStartX > SWIPE_THRESHOLD) {
+                // Swipe right
+                prevCard();
+            }
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            if (studySection.style.display === 'flex') {
+                if (e.key === ' ' || e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                    flipCard();
+                    e.preventDefault();
+                } else if (e.key === 'ArrowRight') {
+                    nextCard();
+                    e.preventDefault();
+                } else if (e.key === 'ArrowLeft') {
+                    prevCard();
+                    e.preventDefault();
+                }
+            }
+        });
+
+        // Function to load the list of collections
+        async function loadCollectionList() {
+            try {
+                // In a real scenario, you would generate this list from your GitHub repository
+                // For now, we'll use a manual approach - update this with your collection names
+                
+                // Check if we're in the right environment
+                const scriptPath = window.location.pathname;
+                const basePath = scriptPath.substring(0, scriptPath.lastIndexOf('/') + 1);
+                
+                // If we're running locally, handle that case
+                if (window.location.protocol === 'file:') {
+                    collectionDropdown.innerHTML = '<option value="">Please select a collection</option>' +
+                        '<option value="collection1">Collection 1</option>' +
+                        '<option value="collection2">Collection 2</option>' +
+                        '<option value="collection3">Collection 3</option>';
+                    collectionInfo.textContent = "Running locally. Manually update the collection list in the code.";
+                    return;
+                }
+                
+                // Attempt to fetch the collections directory and parse it for Excel files
+                try {
+                    const response = await fetch(CONFIG.collectionsPath);
+                    if (!response.ok) {
+                        throw new Error('Could not access collections directory');
+                    }
+                    
+                    // Clear dropdown and add prompt
+                    collectionDropdown.innerHTML = '<option value="">Please select a collection</option>';
+                    
+                    // This is a placeholder. In production, you'll need to manually update
+                    // this list based on the Excel files you upload to GitHub
+                    
+                    // Example of how the code would work with dynamic listing (which GitHub Pages doesn't support)
+                    // const html = await response.text();
+                    // const matches = html.match(/href="([^"]+\.xlsx)"/g);
+                    // if (matches && matches.length > 0) {
+                    //     matches.forEach(match => {
+                    //         const fileName = match.replace(/href="([^"]+\.xlsx)"/, '$1');
+                    //         const name = fileName.replace('.xlsx', '');
+                    //         collectionDropdown.innerHTML += `<option value="${fileName}">${name}</option>`;
+                    //     });
+                    // }
+                    
+                    // MANUALLY UPDATE THIS SECTION with your collection names and file names
+                    // Example:
+                    collectionDropdown.innerHTML += `<option value="Advance Networks.xlsx">Advance Networks</option>`;
+                    // Add more options as needed
+                    
+                    collectionInfo.textContent = "Select a collection to begin.";
+                } catch (error) {
+                    console.error("Error loading collections:", error);
+                    collectionDropdown.innerHTML = '<option value="">Error loading collections</option>';
+                    collectionInfo.textContent = "Could not load collections. Please make sure your collections are properly set up in GitHub.";
+                }
+            } catch (error) {
+                console.error("Error in loadCollectionList:", error);
+                collectionInfo.textContent = "An error occurred while loading collections.";
+            }
+        }
+
+        async function loadSelectedCollection() {
+            const selectedValue = collectionDropdown.value;
+            if (!selectedValue) {
+                tagSelection.style.display = 'none';
+                return;
+            }
+            
+            collectionInfo.textContent = "Loading collection...";
+            
+            try {
+                const filePath = CONFIG.collectionsPath + selectedValue;
+                const response = await fetch(filePath);
+                
+                if (!response.ok) {
+                    throw new Error(`Failed to load collection: ${response.statusText}`);
+                }
+                
+                const arrayBuffer = await response.arrayBuffer();
+                const data = new Uint8Array(arrayBuffer);
+                const workbook = XLSX.read(data, { type: 'array' });
+                
+                // Get first sheet
+                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                
+                // Convert to JSON
+                const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+                
+                // Validate data structure
+                if (!jsonData.length || !jsonData[0].hasOwnProperty('Front') || !jsonData[0].hasOwnProperty('Back')) {
+                    collectionInfo.textContent = 'Invalid file format. The Excel file must have "Front" and "Back" columns.';
+                    return;
+                }
+                
+                // Store data and extract tags
+                flashcardData = jsonData;
+                const columns = Object.keys(jsonData[0]);
+                tags = columns.filter(col => col !== 'Front' && col !== 'Back');
+                
+                // Update UI
+                const collectionName = selectedValue.replace('.xlsx', '');
+                collectionInfo.textContent = `${collectionName} loaded (${jsonData.length} cards, ${tags.length} tags)`;
+                
+                // Show tag selection
+                tagSelection.style.display = 'block';
+                
+                // Clear previous checkboxes
+                tagCheckboxes.innerHTML = '';
+                
+                // Create checkboxes for each tag
+                tags.forEach(tag => {
+                    const checkbox = document.createElement('div');
+                    checkbox.className = 'tag-checkbox';
+                    
+                    const input = document.createElement('input');
+                    input.type = 'checkbox';
+                    input.id = `tag-${tag}`;
+                    input.value = tag;
+                    
+                    const label = document.createElement('label');
+                    label.htmlFor = `tag-${tag}`;
+                    label.textContent = tag;
+                    
+                    checkbox.appendChild(input);
+                    checkbox.appendChild(label);
+                    tagCheckboxes.appendChild(checkbox);
+                });
+                
+                if (tags.length === 0) {
+                    const noTagsMsg = document.createElement('div');
+                    noTagsMsg.textContent = 'No tags found in this collection. All cards will be included.';
+                    tagCheckboxes.appendChild(noTagsMsg);
+                }
+                
+            } catch (error) {
+                console.error("Error loading collection:", error);
+                collectionInfo.textContent = `Error: ${error.message}`;
+                tagSelection.style.display = 'none';
+            }
+        }
+
+        function toggleSelectAll() {
+            const tagInputs = tagCheckboxes.querySelectorAll('input[type="checkbox"]');
+            tagInputs.forEach(input => {
+                input.disabled = selectAll.checked;
+            });
+        }
+
+        function startStudying() {
+            if (!flashcardData || !flashcardData.length) {
+                alert('Please select a flash card collection first.');
+                return;
+            }
+
+            // Determine which cards to study
+            if (selectAll.checked || tags.length === 0) {
+                // Study all cards
+                currentStudyCards = [...flashcardData];
+            } else {
+                // Get selected tags
+                const selectedTags = Array.from(tagCheckboxes.querySelectorAll('input[type="checkbox"]:checked'))
+                    .map(input => input.value);
+
+                if (selectedTags.length === 0) {
+                    if (!confirm('No tags selected. Study all cards?')) {
+                        return;
+                    }
+                    currentStudyCards = [...flashcardData];
+                } else {
+                    // Filter cards that have at least one of the selected tags
+                    currentStudyCards = flashcardData.filter(card => {
+                        return selectedTags.some(tag => card[tag] === true);
+                    });
+                }
+            }
+
+            if (currentStudyCards.length === 0) {
+                alert('No cards found with the selected tags.');
+                return;
+            }
+
+            // Reset study session
+            currentCardIndex = 0;
+            cardSide = 'front';
+
+            // Show study section
+            document.querySelector('.selection-section').style.display = 'none';
+            studySection.style.display = 'flex';
+
+            // Display first card
+            displayCurrentCard();
+        }
+
+        function displayCurrentCard() {
+            if (currentStudyCards.length === 0) {
+                cardContent.textContent = 'No cards to display';
+                cardCounter.textContent = '';
+                return;
+            }
+
+            const card = currentStudyCards[currentCardIndex];
+
+            if (cardSide === 'front') {
+                cardContent.textContent = card.Front;
+                flipBtn.textContent = 'Show Answer';
+            } else {
+                cardContent.textContent = card.Back;
+                flipBtn.textContent = 'Show Question';
+            }
+
+            cardCounter.textContent = `Card ${currentCardIndex + 1} of ${currentStudyCards.length}`;
+        }
+
+        function flipCard() {
+            if (currentStudyCards.length === 0) return;
+
+            cardSide = cardSide === 'front' ? 'back' : 'front';
+            
+            // Add a simple flip animation
+            flashCard.style.transform = 'rotateY(90deg)';
+            
+            setTimeout(() => {
+                displayCurrentCard();
+                flashCard.style.transform = 'rotateY(0deg)';
+            }, 150);
+        }
+
+        function nextCard() {
+            if (currentStudyCards.length === 0) return;
+
+            if (currentCardIndex < currentStudyCards.length - 1) {
+                currentCardIndex++;
+                cardSide = 'front';
+                displayCurrentCard();
+            } else {
+                alert('This is the last card.');
+            }
+        }
+
+        function prevCard() {
+            if (currentStudyCards.length === 0) return;
+
+            if (currentCardIndex > 0) {
+                currentCardIndex--;
+                cardSide = 'front';
+                displayCurrentCard();
+            } else {
+                alert('This is the first card.');
+            }
+        }
+
+        function shuffleCards() {
+            if (currentStudyCards.length === 0) return;
+
+            // Fisher-Yates shuffle algorithm
+            for (let i = currentStudyCards.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [currentStudyCards[i], currentStudyCards[j]] = 
+                [currentStudyCards[j], currentStudyCards[i]];
+            }
+
+            currentCardIndex = 0;
+            cardSide = 'front';
+            displayCurrentCard();
+            alert('Cards shuffled successfully.');
+        }
+
+        function backToSelection() {
+            studySection.style.display = 'none';
+            document.querySelector('.selection-section').style.display = 'block';
+        }
+    </script>
+</body>
+</html>
