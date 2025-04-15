@@ -354,67 +354,33 @@
             }
         });
 
-        // Function to load the list of collections
+        // Replace the loadCollectionList function with this:
         async function loadCollectionList() {
             try {
-                // In a real scenario, you would generate this list from your GitHub repository
-                // For now, we'll use a manual approach - update this with your collection names
+                // Clear dropdown and add prompt
+                collectionDropdown.innerHTML = '<option value="">Please select a collection</option>';
                 
-                // Check if we're in the right environment
-                const scriptPath = window.location.pathname;
-                const basePath = scriptPath.substring(0, scriptPath.lastIndexOf('/') + 1);
+                // MANUALLY DEFINED COLLECTIONS
+                // This is the proper approach for GitHub Pages since directory listing isn't supported
+                const availableCollections = [
+                    { value: "AdvanceNetworks.xlsx", name: "Advanced Networks" },
+                    // Add your other collections here
+                    // { value: "YourFileName.xlsx", name: "Display Name" },
+                ];
                 
-                // If we're running locally, handle that case
-                if (window.location.protocol === 'file:') {
-                    collectionDropdown.innerHTML = '<option value="">Please select a collection</option>' +
-                        '<option value="collection1">Collection 1</option>' +
-                        '<option value="collection2">Collection 2</option>' +
-                        '<option value="collection3">Collection 3</option>';
-                    collectionInfo.textContent = "Running locally. Manually update the collection list in the code.";
-                    return;
-                }
+                // Add options to dropdown
+                availableCollections.forEach(collection => {
+                    collectionDropdown.innerHTML += `<option value="${collection.value}">${collection.name}</option>`;
+                });
                 
-                // Attempt to fetch the collections directory and parse it for Excel files
-                try {
-                    const response = await fetch(CONFIG.collectionsPath);
-                    if (!response.ok) {
-                        throw new Error('Could not access collections directory');
-                    }
-                    
-                    // Clear dropdown and add prompt
-                    collectionDropdown.innerHTML = '<option value="">Please select a collection</option>';
-                    
-                    // This is a placeholder. In production, you'll need to manually update
-                    // this list based on the Excel files you upload to GitHub
-                    
-                    // Example of how the code would work with dynamic listing (which GitHub Pages doesn't support)
-                    // const html = await response.text();
-                    // const matches = html.match(/href="([^"]+\.xlsx)"/g);
-                    // if (matches && matches.length > 0) {
-                    //     matches.forEach(match => {
-                    //         const fileName = match.replace(/href="([^"]+\.xlsx)"/, '$1');
-                    //         const name = fileName.replace('.xlsx', '');
-                    //         collectionDropdown.innerHTML += `<option value="${fileName}">${name}</option>`;
-                    //     });
-                    // }
-                    
-                    // MANUALLY UPDATE THIS SECTION with your collection names and file names
-                    // Example:
-                    collectionDropdown.innerHTML += `<option value="AdvanceNetworks.xlsx">AdvanceNetworks</option>`;
-                    // Add more options as needed
-                    
-                    collectionInfo.textContent = "Select a collection to begin.";
-                } catch (error) {
-                    console.error("Error loading collections:", error);
-                    collectionDropdown.innerHTML = '<option value="">Error loading collections</option>';
-                    collectionInfo.textContent = "Could not load collections. Please make sure your collections are properly set up in GitHub.";
-                }
+                collectionInfo.textContent = "Select a collection to begin.";
             } catch (error) {
                 console.error("Error in loadCollectionList:", error);
                 collectionInfo.textContent = "An error occurred while loading collections.";
             }
         }
 
+        // Replace the loadSelectedCollection function with this improved version:
         async function loadSelectedCollection() {
             const selectedValue = collectionDropdown.value;
             if (!selectedValue) {
@@ -426,10 +392,12 @@
             
             try {
                 const filePath = CONFIG.collectionsPath + selectedValue;
+                console.log("Attempting to load from:", filePath);
+                
                 const response = await fetch(filePath);
                 
                 if (!response.ok) {
-                    throw new Error(`Failed to load collection: ${response.statusText}`);
+                    throw new Error(`Failed to load collection: ${response.statusText} (${response.status})`);
                 }
                 
                 const arrayBuffer = await response.arrayBuffer();
@@ -494,6 +462,7 @@
                 tagSelection.style.display = 'none';
             }
         }
+        
 
         function toggleSelectAll() {
             const tagInputs = tagCheckboxes.querySelectorAll('input[type="checkbox"]');
